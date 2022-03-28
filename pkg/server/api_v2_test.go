@@ -14,6 +14,7 @@ import (
 	"context"
 	gosql "database/sql"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"sort"
@@ -23,6 +24,7 @@ import (
 
 	"github.com/cockroachdb/cockroach/pkg/base"
 	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
+	"github.com/cockroachdb/cockroach/pkg/sql"
 	"github.com/cockroachdb/cockroach/pkg/testutils/serverutils"
 	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
@@ -55,6 +57,22 @@ func TestListSessionsV2(t *testing.T) {
 		}
 	}()
 
+	countStatus := func(sessions []serverpb.Session) {
+		open := 0
+		closed := 0
+		total := 0
+		for _, s := range sessions {
+			if s.Status.String() == "OPEN" {
+				open += 1
+			}
+			if s.Status.String() == "CLOSED" {
+				closed += 1
+			}
+			total += 1
+		}
+		fmt.Printf("Total: %d Open: %d, Closed: %d\n", total, open, closed)
+	}
+
 	doSessionsRequest := func(client http.Client, limit int, start string) listSessionsResponse {
 		req, err := http.NewRequest("GET", ts1.AdminURL()+apiV2Path+"sessions/", nil)
 		require.NoError(t, err)
@@ -80,20 +98,39 @@ func TestListSessionsV2(t *testing.T) {
 		require.NoError(t, json.Unmarshal(bytesResponse, &sessionsResponse))
 		return sessionsResponse
 	}
+	closedSessionFilter := func(sessions []serverpb.Session) (open []serverpb.Session) {
+		for _, s := range sessions {
+			// Only allow open sessions.
+			if s.Status.String() == "OPEN" {
+				open = append(open, s)
+			}
+		}
+		return open
+	}
+	display := func(sessions []serverpb.Session) {
+		for i, s := range sessions {
+			if s.Status.String() == "OPEN" {
+				fmt.Printf("%d\t: %s %s %s\n", i, sql.BytesToClusterWideID(s.ID), s.Username, s.Start)
+			}
+		}
+	}
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(180 * time.Second)
 	adminClient, err := ts1.GetAdminHTTPClient()
 	require.NoError(t, err)
 	sessionsResponse := doSessionsRequest(adminClient, 0, "")
 	require.LessOrEqual(t, 15, len(sessionsResponse.Sessions))
 	require.Equal(t, 0, len(sessionsResponse.Errors))
-	allSessions := sessionsResponse.Sessions
+	countStatus(sessionsResponse.Sessions)
+	allSessions := closedSessionFilter(sessionsResponse.Sessions)
 	sort.Slice(allSessions, func(i, j int) bool {
 		return allSessions[i].Start.Before(allSessions[j].Start)
 	})
 
 	// Test the paginated version is identical to the non-paginated one.
 	for limit := 1; limit <= 15; limit++ {
+		fmt.Println("inside the limit loop. limit =", limit)
+		countStatus(doSessionsRequest(adminClient, 0, "").Sessions)
 		var next string
 		var paginatedSessions []serverpb.Session
 		for {
@@ -105,11 +142,38 @@ func TestListSessionsV2(t *testing.T) {
 				break
 			}
 		}
+		fmt.Println("limit loop has ended")
+		countStatus(paginatedSessions)
+		paginatedSessions = closedSessionFilter(paginatedSessions)
 		sort.Slice(paginatedSessions, func(i, j int) bool {
 			return paginatedSessions[i].Start.Before(paginatedSessions[j].Start)
 		})
+		countStatus(doSessionsRequest(adminClient, 0, "").Sessions)
 		// Sometimes there can be a transient session that pops up in one of the two
 		// calls. Exclude it by only comparing the first 15 sessions.
+		//for limit := 1; limit <= 15; limit++ {
+		//	fmt.Println("inside the limit loop. limit =", limit)
+		//	countStatus(doSessionsRequest(adminClient, 0, "").Sessions)
+		//	var next string
+		//	var paginatedSessions []serverpb.Session
+		//	for {
+		//		sessionsResponse := doSessionsRequest(adminClient, limit, next)
+		//		paginatedSessions = append(paginatedSessions, sessionsResponse.Sessions...)
+		//		next = sessionsResponse.Next
+		//		require.LessOrEqual(t, len(sessionsResponse.Sessions), limit)
+		//		if len(sessionsResponse.Sessions) < limit {
+		//			break
+		//		}
+		//	}
+		//	fmt.Println("limit loop has ended")
+		//	countStatus(paginatedSessions)
+		//	paginatedSessions = closedSessionFilter(paginatedSessions)
+		//	sort.Slice(paginatedSessions, func(i, j int) bool {
+		//		return paginatedSessions[i].Start.Before(paginatedSessions[j].Start)
+		//	})
+		//}
+		display(paginatedSessions)
+		display(allSessions)
 		require.Equal(t, paginatedSessions[:15], allSessions[:15])
 	}
 

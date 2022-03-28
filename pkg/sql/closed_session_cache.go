@@ -18,6 +18,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/settings/cluster"
 	"github.com/cockroachdb/cockroach/pkg/util/cache"
 	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
+	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 )
 
 type timeSource func() time.Time
@@ -28,7 +29,7 @@ var ClosedSessionCacheCapacity = settings.RegisterIntSetting(
 	settings.TenantWritable,
 	"sql.closed_session_cache.capacity",
 	"the maximum number of sessions in the cache",
-	100, // TODO(gtr): Totally arbitrary for now, adjust later.
+	1000, // TODO(gtr): Totally arbitrary for now, adjust later.
 ).WithPublic()
 
 // ClosedSessionCacheTimeToLive is the cluster setting that controls the maximum time
@@ -71,6 +72,9 @@ func (c *ClosedSessionCache) Add(id ClusterWideID, session serverpb.Session) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	end := timeutil.Now()
+	session.End = &end
+	session.Status = serverpb.Session_CLOSED
 	node := &sessionNode{id: id, data: session, timestamp: c.timeSrc()}
 	c.mu.data.Add(id, node)
 }
