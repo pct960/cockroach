@@ -168,13 +168,13 @@ func (r *Replica) evalAndPropose(
 	// return a proposal result immediately on the proposal's done channel.
 	// The channel's capacity will be large enough to accommodate this.
 	if ba.AsyncConsensus {
-		if ets := proposal.Local.DetachEndTxns(false /* alwaysOnly */); len(ets) != 0 {
-			// Disallow async consensus for commands with EndTxnIntents because
-			// any !Always EndTxnIntent can't be cleaned up until after the
-			// command succeeds.
-			return nil, nil, "", roachpb.NewErrorf("cannot perform consensus asynchronously for "+
-				"proposal with EndTxnIntents=%v; %v", ets, ba)
-		}
+		//if ets := proposal.Local.DetachEndTxns(false /* alwaysOnly */); len(ets) != 0 {
+		//	// Disallow async consensus for commands with EndTxnIntents because
+		//	// any !Always EndTxnIntent can't be cleaned up until after the
+		//	// command succeeds.
+		//	return nil, nil, "", roachpb.NewErrorf("cannot perform consensus asynchronously for "+
+		//		"proposal with EndTxnIntents=%v; %v", ets, ba)
+		//}
 
 		// Fork the proposal's context span so that the proposal's context
 		// can outlive the original proposer's context.
