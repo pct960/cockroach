@@ -421,68 +421,68 @@ func (tp *txnPipeliner) attachLocksToEndTxn(
 // canUseAsyncConsensus checks the conditions necessary for this batch to be
 // allowed to set the AsyncConsensus flag.
 func (tp *txnPipeliner) canUseAsyncConsensus(ctx context.Context, ba roachpb.BatchRequest) bool {
-	//// Short-circuit for EndTransactions; it's common enough to have batches
-	//// containing a prefix of writes (which, by themselves, are all eligible for
-	//// async consensus) and then an EndTxn (which is not eligible). Note that
-	//// ba.GetArg() is efficient for EndTransactions, having its own internal
-	//// optimization.
-	//if _, hasET := ba.GetArg(roachpb.EndTxn); hasET {
-	//	return false
-	//}
+	// Short-circuit for EndTransactions; it's common enough to have batches
+	// containing a prefix of writes (which, by themselves, are all eligible for
+	// async consensus) and then an EndTxn (which is not eligible). Note that
+	// ba.GetArg() is efficient for EndTransactions, having its own internal
+	// optimization.
+	if _, hasET := ba.GetArg(roachpb.EndTxn); hasET {
+		return false
+	}
 
-	//if !pipelinedWritesEnabled.Get(&tp.st.SV) || tp.disabled {
-	//	return false
-	//}
+	if !pipelinedWritesEnabled.Get(&tp.st.SV) || tp.disabled {
+		return false
+	}
 
-	//// There's a memory budget for lock tracking. If this batch would push us over
-	//// this setting, don't allow it to perform async consensus.
-	//addedIFBytes := int64(0)
-	//maxTrackingBytes := TrackedWritesMaxSize.Get(&tp.st.SV)
+	// There's a memory budget for lock tracking. If this batch would push us over
+	// this setting, don't allow it to perform async consensus.
+	addedIFBytes := int64(0)
+	maxTrackingBytes := TrackedWritesMaxSize.Get(&tp.st.SV)
 
-	//// We provide a setting to bound the number of writes we permit in a batch
-	//// that uses async consensus. This is useful because we'll have to prove
-	//// each write that uses async consensus using a QueryIntent, so there's a
-	//// point where it makes more sense to just perform consensus for the entire
-	//// batch synchronously and avoid all of the overhead of pipelining.
-	//if maxBatch := pipelinedWritesMaxBatchSize.Get(&tp.st.SV); maxBatch > 0 {
-	//	batchSize := int64(len(ba.Requests))
-	//	if batchSize > maxBatch {
-	//		return false
-	//	}
-	//}
+	// We provide a setting to bound the number of writes we permit in a batch
+	// that uses async consensus. This is useful because we'll have to prove
+	// each write that uses async consensus using a QueryIntent, so there's a
+	// point where it makes more sense to just perform consensus for the entire
+	// batch synchronously and avoid all of the overhead of pipelining.
+	if maxBatch := pipelinedWritesMaxBatchSize.Get(&tp.st.SV); maxBatch > 0 {
+		batchSize := int64(len(ba.Requests))
+		if batchSize > maxBatch {
+			return false
+		}
+	}
 
-	//for _, ru := range ba.Requests {
-	//	req := ru.GetInner()
+	for _, ru := range ba.Requests {
+		req := ru.GetInner()
 
-	//	// Determine whether the current request prevents us from performing async
-	//	// consensus on the batch.
-	//	if !roachpb.IsIntentWrite(req) || roachpb.IsRange(req) {
-	//		// Only allow batches consisting of solely transactional point
-	//		// writes to perform consensus asynchronously.
-	//		// TODO(nvanbenschoten): We could allow batches with reads and point
-	//		// writes to perform async consensus, but this would be a bit
-	//		// tricky. Any read would need to chain on to any write that came
-	//		// before it in the batch and overlaps. For now, it doesn't seem
-	//		// worth it.
-	//		return false
-	//	}
-	//	// Inhibit async consensus if the batch would push us over the maximum
-	//	// tracking memory budget. If we allowed async consensus on this batch, its
-	//	// writes would need to be tracked precisely. By inhibiting async consensus,
-	//	// its writes will only need to be tracked as locks, and we can compress the
-	//	// lock spans with loss of fidelity. This helps both memory usage and the
-	//	// eventual size of the Raft command for the commit.
-	//	//
-	//	// NB: this estimation is conservative because it doesn't factor
-	//	// in that some writes may be proven by this batch and removed
-	//	// from the in-flight write set. The real accounting in
-	//	// inFlightWriteSet.{insert,remove} gets this right.
-	//	addedIFBytes += keySize(req.Header().Key)
-	//	if (tp.ifWrites.byteSize() + addedIFBytes + tp.lockFootprint.bytes) > maxTrackingBytes {
-	//		log.VEventf(ctx, 2, "cannot perform async consensus because memory budget exceeded")
-	//		return false
-	//	}
-	//}
+		// Determine whether the current request prevents us from performing async
+		// consensus on the batch.
+		if !roachpb.IsIntentWrite(req) || roachpb.IsRange(req) {
+			// Only allow batches consisting of solely transactional point
+			// writes to perform consensus asynchronously.
+			// TODO(nvanbenschoten): We could allow batches with reads and point
+			// writes to perform async consensus, but this would be a bit
+			// tricky. Any read would need to chain on to any write that came
+			// before it in the batch and overlaps. For now, it doesn't seem
+			// worth it.
+			return false
+		}
+		// Inhibit async consensus if the batch would push us over the maximum
+		// tracking memory budget. If we allowed async consensus on this batch, its
+		// writes would need to be tracked precisely. By inhibiting async consensus,
+		// its writes will only need to be tracked as locks, and we can compress the
+		// lock spans with loss of fidelity. This helps both memory usage and the
+		// eventual size of the Raft command for the commit.
+		//
+		// NB: this estimation is conservative because it doesn't factor
+		// in that some writes may be proven by this batch and removed
+		// from the in-flight write set. The real accounting in
+		// inFlightWriteSet.{insert,remove} gets this right.
+		addedIFBytes += keySize(req.Header().Key)
+		if (tp.ifWrites.byteSize() + addedIFBytes + tp.lockFootprint.bytes) > maxTrackingBytes {
+			log.VEventf(ctx, 2, "cannot perform async consensus because memory budget exceeded")
+			return false
+		}
+	}
 	return true
 }
 
@@ -556,7 +556,7 @@ func (tp *txnPipeliner) chainToInFlightWrites(ba roachpb.BatchRequest) roachpb.B
 				if et.Commit {
 					// EndTxns need to prove all in-flight writes before being
 					// allowed to succeed themselves.
-					tp.ifWrites.ascend(writeIter)
+					//tp.ifWrites.ascend(writeIter)
 				}
 			} else {
 				// Transactional reads and writes needs to chain on to any
@@ -717,9 +717,9 @@ func (tp *txnPipeliner) updateLockTrackingInner(
 				// The request is not expected to be a ranged one, as we're only
 				// tracking one key in the ifWrites. Ranged requests do not admit
 				// ba.AsyncConsensus.
-				//if roachpb.IsRange(req) {
-				//	log.Fatalf(ctx, "unexpected range request with AsyncConsensus: %s", req)
-				//}
+				if roachpb.IsRange(req) {
+					log.Fatalf(ctx, "unexpected range request with AsyncConsensus: %s", req)
+				}
 			} else {
 				// If the lock acquisitions weren't performed asynchronously
 				// then add them directly to our lock footprint. Locking read
