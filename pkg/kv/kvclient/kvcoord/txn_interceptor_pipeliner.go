@@ -556,7 +556,7 @@ func (tp *txnPipeliner) chainToInFlightWrites(ba roachpb.BatchRequest) roachpb.B
 				if et.Commit {
 					// EndTxns need to prove all in-flight writes before being
 					// allowed to succeed themselves.
-					//tp.ifWrites.ascend(writeIter)
+					tp.ifWrites.ascend(writeIter)
 				}
 			} else {
 				// Transactional reads and writes needs to chain on to any
