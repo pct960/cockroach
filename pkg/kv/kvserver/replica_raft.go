@@ -110,6 +110,10 @@ func (r *Replica) evalAndPropose(
 ) (chan proposalResult, func(), kvserverbase.CmdIDKey, *roachpb.Error) {
 	defer tok.DoneIfNotMoved(ctx)
 	idKey := makeIDKey()
+
+	if ba.EarlyRaftReturn {
+		log.Info(ctx, "earlyraftreturn set")
+	}
 	proposal, pErr := r.requestToProposal(ctx, idKey, ba, st, ui, g)
 	log.Event(proposal.ctx, "evaluated request")
 

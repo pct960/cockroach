@@ -283,6 +283,8 @@ func (tp *txnPipeliner) SendLocked(
 
 	ba.AsyncConsensus = tp.canUseAsyncConsensus(ctx, ba)
 
+	ba.EarlyRaftReturn = tp.canUseEarlyRaftReturn(ctx, ba)
+
 	// Adjust the batch so that it doesn't miss any in-flight writes.
 	ba = tp.chainToInFlightWrites(ba)
 
@@ -416,6 +418,23 @@ func (tp *txnPipeliner) attachLocksToEndTxn(
 		}
 	}
 	return ba, nil
+}
+
+func (tp *txnPipeliner) canUseEarlyRaftReturn(ctx context.Context, ba roachpb.BatchRequest) bool {
+
+	for _, ru := range ba.Requests {
+		req := ru.GetInner()
+
+		if req.Method() == roachpb.EndTxn {
+			continue
+		}
+
+		if !roachpb.IsIntentWrite(req) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // canUseAsyncConsensus checks the conditions necessary for this batch to be
