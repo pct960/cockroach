@@ -111,11 +111,13 @@ func (r *Replica) evalAndPropose(
 	defer tok.DoneIfNotMoved(ctx)
 	idKey := makeIDKey()
 
-	if ba.EarlyRaftReturn {
-		log.Info(ctx, "earlyraftreturn set")
-	}
 	proposal, pErr := r.requestToProposal(ctx, idKey, ba, st, ui, g)
 	log.Event(proposal.ctx, "evaluated request")
+
+	if ba.EarlyRaftReturn {
+		log.Info(ctx, "earlyraftreturn set")
+		proposal.EarlyRaftReturn = true
+	}
 
 	// If the request hit a server-side concurrency retry error, immediately
 	// proagate the error. Don't assume ownership of the concurrency guard.

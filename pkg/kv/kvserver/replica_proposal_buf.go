@@ -411,6 +411,11 @@ func (b *propBuf) FlushLockedWithRaftGroup(
 	// stop trying to propose commands to raftGroup.
 	var firstErr error
 	for i, p := range buf {
+
+		if p.EarlyRaftReturn {
+			log.Info(ctx, "flag set in proposal")
+		}
+
 		if p == nil {
 			log.Fatalf(ctx, "unexpected nil proposal in buffer")
 			return 0, nil // unreachable, for linter
@@ -532,6 +537,7 @@ func (b *propBuf) FlushLockedWithRaftGroup(
 			// Flush any previously batched (non-conf change) proposals to
 			// preserve the correct ordering or proposals. Later proposals
 			// will start a new batch.
+
 			if err := proposeBatch(raftGroup, b.p.getReplicaID(), ents); err != nil {
 				firstErr = err
 				continue

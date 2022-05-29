@@ -124,6 +124,8 @@ type ProposalData struct {
 	// tok identifies the request to the propBuf. Once the proposal is made, the
 	// token will be used to stop tracking this request.
 	tok TrackedRequestToken
+
+	EarlyRaftReturn bool
 }
 
 // finishApplication is called when a command application has finished. The
