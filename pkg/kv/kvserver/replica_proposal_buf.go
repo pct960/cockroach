@@ -412,14 +412,15 @@ func (b *propBuf) FlushLockedWithRaftGroup(
 	var firstErr error
 	for i, p := range buf {
 
-		if p.EarlyRaftReturn {
-			log.Info(ctx, "flag set in proposal")
-		}
-
 		if p == nil {
 			log.Fatalf(ctx, "unexpected nil proposal in buffer")
 			return 0, nil // unreachable, for linter
 		}
+
+		if p.EarlyRaftReturn {
+			log.Info(ctx, "flag set in proposal")
+		}
+
 		buf[i] = nil // clear buffer
 		reproposal := !p.tok.stillTracked()
 
