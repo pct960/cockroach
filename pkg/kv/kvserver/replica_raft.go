@@ -115,7 +115,7 @@ func (r *Replica) evalAndPropose(
 	log.Event(proposal.ctx, "evaluated request")
 
 	if ba.EarlyRaftReturn {
-		log.Info(ctx, "earlyraftreturn set")
+		// log.Info(ctx, "earlyraftreturn set")
 		proposal.EarlyRaftReturn = true
 	}
 
@@ -745,7 +745,7 @@ func (r *Replica) handleRaftReadyRaftMuLocked(
 	appTask := apply.MakeTask(sm, dec)
 	appTask.SetMaxBatchSize(r.store.TestingKnobs().MaxApplicationBatchSize)
 	defer appTask.Close()
-	if err := appTask.Decode(ctx, rd.CommittedEntries); err != nil {
+	if err := appTask.Decode(ctx, rd.Entries); err != nil {
 		return stats, getNonDeterministicFailureExplanation(err), err
 	}
 	if err := appTask.AckCommittedEntriesBeforeApplication(ctx, lastIndex); err != nil {
@@ -922,6 +922,7 @@ func (r *Replica) handleRaftReadyRaftMuLocked(
 
 	applicationStart := timeutil.Now()
 	if len(rd.CommittedEntries) > 0 {
+		// printContextInternals(ctx, false)
 		err := appTask.ApplyCommittedEntries(ctx)
 		stats.applyCommittedEntriesStats = sm.moveStats()
 		if errors.Is(err, apply.ErrRemoved) {
@@ -1009,6 +1010,33 @@ func (r *Replica) handleRaftReadyRaftMuLocked(
 	r.updateProposalQuotaRaftMuLocked(ctx, lastLeaderID)
 	return stats, "", nil
 }
+
+//func printContextInternals(ctx interface{}, inner bool) {
+//	contextValues := reflect.ValueOf(ctx).Elem()
+//	contextKeys := reflect.TypeOf(ctx).Elem()
+//
+//	if !inner {
+//		fmt.Printf("\nFields for %s.%s\n", contextKeys.PkgPath(), contextKeys.Name())
+//	}
+//
+//	if contextKeys.Kind() == reflect.Struct {
+//		for i := 0; i < contextValues.NumField(); i++ {
+//			reflectValue := contextValues.Field(i)
+//			reflectValue = reflect.NewAt(reflectValue.Type(), unsafe.Pointer(reflectValue.UnsafeAddr())).Elem()
+//
+//			reflectField := contextKeys.Field(i)
+//
+//			if reflectField.Name == "Context" {
+//				printContextInternals(reflectValue.Interface(), true)
+//			} else {
+//				fmt.Printf("field name: %+v\n", reflectField.Name)
+//				fmt.Printf("value: %+v\n", reflectValue.Interface())
+//			}
+//		}
+//	} else {
+//		fmt.Printf("context is empty (int)\n")
+//	}
+//}
 
 // splitMsgApps splits the Raft message slice into two slices, one containing
 // MsgApps and one containing all other message types. Each slice retains the
