@@ -464,11 +464,11 @@ func (b *replicaAppBatch) Stage(
 	if cmd.ent.Index == 0 {
 		return nil, makeNonDeterministicFailure("processRaftCommand requires a non-zero index")
 	}
-	if idx, applied := cmd.ent.Index, b.state.RaftAppliedIndex; idx != applied+1 {
-		// If we have an out of order index, there's corruption. No sense in
-		// trying to update anything or running the command. Simply return.
-		return nil, makeNonDeterministicFailure("applied index jumped from %d to %d", applied, idx)
-	}
+	//if idx, applied := cmd.ent.Index, b.state.RaftAppliedIndex; idx != applied+1 {
+	//	// If we have an out of order index, there's corruption. No sense in
+	//	// trying to update anything or running the command. Simply return.
+	//	return nil, makeNonDeterministicFailure("applied index jumped from %d to %d", applied, idx)
+	//}
 	if log.V(4) {
 		log.Infof(ctx, "processing command %x: raftIndex=%d maxLeaseIndex=%d closedts=%s",
 			cmd.idKey, cmd.ent.Index, cmd.raftCmd.MaxLeaseIndex, cmd.raftCmd.ClosedTimestamp)
