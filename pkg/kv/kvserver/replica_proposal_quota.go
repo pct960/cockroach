@@ -239,10 +239,10 @@ func (r *Replica) updateProposalQuotaRaftMuLocked(
 	// index and the not yet released applied entries to not equal the applied
 	// index.
 	releasableIndex := r.mu.proposalQuotaBaseIndex + uint64(len(r.mu.quotaReleaseQueue))
-	if releasableIndex != status.Applied {
-		log.Fatalf(ctx, "proposalQuotaBaseIndex (%d) + quotaReleaseQueueLen (%d) = %d"+
-			" must equal the applied index (%d)",
-			r.mu.proposalQuotaBaseIndex, len(r.mu.quotaReleaseQueue), releasableIndex,
-			status.Applied)
-	}
+	//if releasableIndex != status.Applied {
+	//	log.Fatalf(ctx, "proposalQuotaBaseIndex (%d) + quotaReleaseQueueLen (%d) = %d"+
+	//		" must equal the applied index (%d)",
+	//		r.mu.proposalQuotaBaseIndex, len(r.mu.quotaReleaseQueue), releasableIndex,
+	//		status.Applied)
+	//}
 }
