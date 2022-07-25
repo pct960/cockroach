@@ -417,9 +417,9 @@ func (b *propBuf) FlushLockedWithRaftGroup(
 			return 0, nil // unreachable, for linter
 		}
 
-		if p.EarlyRaftReturn {
-			log.Info(ctx, "flag set in proposal")
-		}
+		//if p.EarlyRaftReturn {
+		//	log.Info(ctx, "flag set in proposal")
+		//}
 
 		buf[i] = nil // clear buffer
 		reproposal := !p.tok.stillTracked()
