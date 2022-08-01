@@ -746,10 +746,18 @@ func (r *Replica) handleRaftReadyRaftMuLocked(
 	appTask.SetMaxBatchSize(r.store.TestingKnobs().MaxApplicationBatchSize)
 	defer appTask.Close()
 
-	if err := appTask.Decode(ctx, rd.Entries); err != nil {
-		return stats, getNonDeterministicFailureExplanation(err), err
+	if r.mu.leaderID == r.replicaID {
+		if err := appTask.Decode(ctx, rd.Entries); err != nil {
+			return stats, getNonDeterministicFailureExplanation(err), err
 
+		}
+	} else {
+		if err := appTask.Decode(ctx, rd.CommittedEntries); err != nil {
+			return stats, getNonDeterministicFailureExplanation(err), err
+
+		}
 	}
+
 	if err := appTask.AckCommittedEntriesBeforeApplication(ctx, lastIndex); err != nil {
 		return stats, getNonDeterministicFailureExplanation(err), err
 	}
