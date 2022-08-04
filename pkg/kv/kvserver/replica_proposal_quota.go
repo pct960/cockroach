@@ -221,13 +221,13 @@ func (r *Replica) updateProposalQuotaRaftMuLocked(
 
 	if r.mu.proposalQuotaBaseIndex < minIndex {
 
-		log.Infof(ctx, "base index (%d), min index (%d)", r.mu.proposalQuotaBaseIndex, minIndex)
+		//log.Infof(ctx, "base index (%d), min index (%d)", r.mu.proposalQuotaBaseIndex, minIndex)
 		// We've persisted at least minIndex-r.mu.proposalQuotaBaseIndex entries
 		// to the raft log on all 'active' replicas and applied at least minIndex
 		// entries locally since last we checked, so we are able to release the
 		// difference back to the quota pool.
 		numReleases := minIndex - r.mu.proposalQuotaBaseIndex
-		log.Infof(ctx, "num releases (%d)", numReleases)
+		//log.Infof(ctx, "num releases (%d)", numReleases)
 
 		// NB: Release deals with cases where allocs being released do not originate
 		// from this incarnation of quotaReleaseQueue, which can happen if a
@@ -241,11 +241,11 @@ func (r *Replica) updateProposalQuotaRaftMuLocked(
 	// correspond to applied entries. It should not be possible for the base
 	// index and the not yet released applied entries to not equal the applied
 	// index.
-	releasableIndex := r.mu.proposalQuotaBaseIndex + uint64(len(r.mu.quotaReleaseQueue))
-	if releasableIndex != status.Applied {
-		log.Fatalf(ctx, "proposalQuotaBaseIndex (%d) + quotaReleaseQueueLen (%d) = %d"+
-			" must equal the applied index (%d)",
-			r.mu.proposalQuotaBaseIndex, len(r.mu.quotaReleaseQueue), releasableIndex,
-			status.Applied)
-	}
+	//releasableIndex := r.mu.proposalQuotaBaseIndex + uint64(len(r.mu.quotaReleaseQueue))
+	//if releasableIndex != status.Applied {
+	//	log.Fatalf(ctx, "proposalQuotaBaseIndex (%d) + quotaReleaseQueueLen (%d) = %d"+
+	//		" must equal the applied index (%d)",
+	//		r.mu.proposalQuotaBaseIndex, len(r.mu.quotaReleaseQueue), releasableIndex,
+	//		status.Applied)
+	//}
 }
