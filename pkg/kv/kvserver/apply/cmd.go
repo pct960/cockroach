@@ -18,6 +18,9 @@ import "context"
 type Command interface {
 	// Index is the log index of the corresponding raft entry.
 	Index() uint64
+
+	// Indicates if the command qualifies for earlyraftreturn
+	EarlyReturn() bool
 	// IsTrivial returns whether the command can apply in a batch.
 	IsTrivial() bool
 	// IsLocal returns whether the command was locally proposed. Command

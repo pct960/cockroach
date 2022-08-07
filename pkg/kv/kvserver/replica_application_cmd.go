@@ -107,6 +107,18 @@ func (c *replicatedCmd) IsTrivial() bool {
 	return isTrivial(c.replicatedResult())
 }
 
+// EarlyReturn implements the apply.Command interface
+func (c *replicatedCmd) EarlyReturn() bool {
+
+	cmdProposal := c.proposal
+
+	if cmdProposal != nil {
+		return c.proposal.EarlyRaftReturn
+	}
+
+	return false
+}
+
 // IsLocal implements the apply.Command interface.
 func (c *replicatedCmd) IsLocal() bool {
 	return c.proposal != nil
