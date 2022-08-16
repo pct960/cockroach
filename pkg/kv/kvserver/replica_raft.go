@@ -276,6 +276,22 @@ func (r *Replica) evalAndPropose(
 	if pErr != nil {
 		return nil, nil, "", pErr
 	}
+
+	if ba.EarlyRaftReturn {
+		// Fork the proposal's context span so that the proposal's context
+		// can outlive the original proposer's context.
+		proposal.ctx, proposal.sp = tracing.ForkSpan(ctx, "async consensus")
+
+		// Signal the proposal's response channel immediately.
+		reply := *proposal.Local.Reply
+		reply.Responses = append([]roachpb.ResponseUnion(nil), reply.Responses...)
+		pr := proposalResult{
+			Reply:              &reply,
+			EncounteredIntents: proposal.Local.DetachEncounteredIntents(),
+		}
+		proposal.signalProposalResult(pr)
+	}
+
 	// Abandoning a proposal unbinds its context so that the proposal's client
 	// is free to terminate execution. However, it does nothing to try to
 	// prevent the command from succeeding. In particular, endCmds will still be
@@ -746,18 +762,8 @@ func (r *Replica) handleRaftReadyRaftMuLocked(
 	appTask.SetMaxBatchSize(r.store.TestingKnobs().MaxApplicationBatchSize)
 	defer appTask.Close()
 
-	// Decode raft entries only if the current node is the leader. Else, don't.
-	if r.mu.leaderID == r.replicaID {
-		if err := appTask.Decode(ctx, rd.Entries); err != nil {
-			return stats, getNonDeterministicFailureExplanation(err), err
-
-		}
-
-	} else {
-		if err := appTask.Decode(ctx, rd.CommittedEntries); err != nil {
-			return stats, getNonDeterministicFailureExplanation(err), err
-
-		}
+	if err := appTask.Decode(ctx, rd.CommittedEntries); err != nil {
+		return stats, getNonDeterministicFailureExplanation(err), err
 
 	}
 

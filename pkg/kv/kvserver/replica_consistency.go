@@ -168,9 +168,9 @@ func (r *Replica) CheckConsistency(
 			}
 		}
 
-		if isQueue {
-			log.Errorf(ctx, "%v", &buf)
-		}
+		//if isQueue {
+		//	log.Errorf(ctx, "%v", &buf)
+		//}
 		res.Detail += buf.String()
 	} else {
 		res.Detail += fmt.Sprintf("stats: %+v\n", results[0].Response.Persisted)

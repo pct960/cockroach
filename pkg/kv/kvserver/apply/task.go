@@ -208,11 +208,11 @@ func (t *Task) AckCommittedEntriesBeforeApplication(ctx context.Context, maxInde
 	// non-trivial command or at the first command with an index above maxIndex.
 	batchIter := takeWhileCmdIter(iter, func(cmd Command) bool {
 
-		if !cmd.EarlyReturn() {
-			if cmd.Index() > maxIndex {
-				return false
-			}
+		//if !cmd.EarlyReturn() {
+		if cmd.Index() > maxIndex {
+			return false
 		}
+		//}
 		return cmd.IsTrivial()
 	})
 

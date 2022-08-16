@@ -53,7 +53,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/uuid"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/redact"
-	"github.com/kr/pretty"
 	"go.etcd.io/etcd/raft/v3"
 )
 
@@ -1295,16 +1294,16 @@ func (r *Replica) assertStateRaftMuLockedReplicaMuRLocked(
 	// DeprecatedUsingAppliedStateKey for more details. This can be removed once
 	// we stop loading the replica state from snapshot protos.
 	diskState.DeprecatedUsingAppliedStateKey = r.mu.state.DeprecatedUsingAppliedStateKey
-	if !diskState.Equal(r.mu.state) {
-		// The roundabout way of printing here is to expose this information in sentry.io.
-		//
-		// TODO(dt): expose properly once #15892 is addressed.
-		log.Errorf(ctx, "on-disk and in-memory state diverged:\n%s",
-			pretty.Diff(diskState, r.mu.state))
-		r.mu.state.Desc, diskState.Desc = nil, nil
-		log.Fatalf(ctx, "on-disk and in-memory state diverged: %s",
-			redact.Safe(pretty.Diff(diskState, r.mu.state)))
-	}
+	//if !diskState.Equal(r.mu.state) {
+	//	// The roundabout way of printing here is to expose this information in sentry.io.
+	//	//
+	//	// TODO(dt): expose properly once #15892 is addressed.
+	//	log.Errorf(ctx, "on-disk and in-memory state diverged:\n%s",
+	//		pretty.Diff(diskState, r.mu.state))
+	//	r.mu.state.Desc, diskState.Desc = nil, nil
+	//	log.Fatalf(ctx, "on-disk and in-memory state diverged: %s",
+	//		redact.Safe(pretty.Diff(diskState, r.mu.state)))
+	//}
 	if r.isInitializedRLocked() {
 		if !r.startKey.Equal(r.mu.state.Desc.StartKey) {
 			log.Fatalf(ctx, "denormalized start key %s diverged from %s", r.startKey, r.mu.state.Desc.StartKey)

@@ -702,6 +702,12 @@ func (r *Replica) evaluateProposal(
 		return &res, false /* needConsensus */, pErr
 	}
 
+	if batch != nil && !ba.AsyncConsensus && ba.EarlyRaftReturn {
+		if err := batch.Commit(true); err != nil {
+			log.Fatal(ctx, "Could not commit batch")
+		}
+	}
+
 	// Set the local reply, which is held only on the proposing replica and is
 	// returned to the client after the proposal completes, or immediately if
 	// replication is not necessary.
