@@ -1705,30 +1705,30 @@ func (r *Replica) initializeRaftLearners(
 	// contain the respective replicas.
 	// TODO(andrei): Find a better way to wait for replication. If we knew the
 	// LAI of the respective command, we could use waitForApplication().
-	descriptorOK := false
-	start := timeutil.Now()
-	retOpts := retry.Options{InitialBackoff: time.Second, MaxBackoff: time.Second, MaxRetries: 10}
-	for re := retry.StartWithCtx(ctx, retOpts); re.Next(); {
-		rDesc := r.Desc()
-		if rDesc.Generation >= desc.Generation {
-			descriptorOK = true
-			break
-		}
-		log.VEventf(ctx, 1, "stale descriptor detected; waiting to catch up to replication. want: %s, have: %s",
-			desc, rDesc)
-		if _, err := r.IsDestroyed(); err != nil {
-			return nil, errors.Wrapf(
-				err,
-				"replica destroyed while waiting desc replication",
-			)
-		}
-	}
-	if !descriptorOK {
-		return nil, errors.Newf(
-			"waited for %s and replication hasn't caught up with descriptor update",
-			timeutil.Since(start),
-		)
-	}
+	//descriptorOK := false
+	//start := timeutil.Now()
+	//retOpts := retry.Options{InitialBackoff: time.Second, MaxBackoff: time.Second, MaxRetries: 10}
+	//for re := retry.StartWithCtx(ctx, retOpts); re.Next(); {
+	//	rDesc := r.Desc()
+	//	if rDesc.Generation >= desc.Generation {
+	//		//descriptorOK = true
+	//		break
+	//	}
+	//	log.VEventf(ctx, 1, "stale descriptor detected; waiting to catch up to replication. want: %s, have: %s",
+	//		desc, rDesc)
+	//	if _, err := r.IsDestroyed(); err != nil {
+	//		return nil, errors.Wrapf(
+	//			err,
+	//			"replica destroyed while waiting desc replication",
+	//		)
+	//	}
+	//}
+	//if !descriptorOK {
+	//	return nil, errors.Newf(
+	//		"waited for %s and replication hasn't caught up with descriptor update",
+	//		timeutil.Since(start),
+	//	)
+	//}
 
 	for _, target := range targets {
 		rDesc, ok := desc.GetReplicaDescriptor(target.StoreID)

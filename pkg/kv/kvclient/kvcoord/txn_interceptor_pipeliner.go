@@ -425,14 +425,20 @@ func (tp *txnPipeliner) canUseEarlyRaftReturn(ctx context.Context, ba roachpb.Ba
 	for _, ru := range ba.Requests {
 		req := ru.GetInner()
 
-		if req.Method() == roachpb.EndTxn {
-			continue
-		}
+		//log.Infof(ctx, "req method (%s)", req.Method().String())
 
-		if !roachpb.IsIntentWrite(req) {
+		if req.Method() == roachpb.EndTxn || req.Method() == roachpb.Get || req.Method() == roachpb.Put {
+			continue
+		} else {
 			return false
 		}
+
+		//if !roachpb.IsIntentWrite(req) {
+		//	return false
+		//}
 	}
+
+	//log.Info(ctx, "ERR set")
 
 	return true
 }

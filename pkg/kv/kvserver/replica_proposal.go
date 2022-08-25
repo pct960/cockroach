@@ -702,7 +702,8 @@ func (r *Replica) evaluateProposal(
 		return &res, false /* needConsensus */, pErr
 	}
 
-	if batch != nil && !ba.AsyncConsensus && ba.EarlyRaftReturn {
+	if batch != nil && ba.EarlyRaftReturn {
+		//log.Info(ctx, "applying early")
 		if err := batch.Commit(true); err != nil {
 			log.Fatal(ctx, "Could not commit batch")
 		}

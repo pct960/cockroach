@@ -19,7 +19,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/base"
 	"github.com/cockroachdb/cockroach/pkg/keys"
 	"github.com/cockroachdb/cockroach/pkg/kv"
 	"github.com/cockroachdb/cockroach/pkg/kv/kvserver/batcheval"
@@ -30,15 +29,12 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/rpc"
 	"github.com/cockroachdb/cockroach/pkg/storage"
 	"github.com/cockroachdb/cockroach/pkg/storage/enginepb"
-	"github.com/cockroachdb/cockroach/pkg/storage/fs"
 	"github.com/cockroachdb/cockroach/pkg/util/bufalloc"
-	"github.com/cockroachdb/cockroach/pkg/util/contextutil"
 	"github.com/cockroachdb/cockroach/pkg/util/envutil"
 	"github.com/cockroachdb/cockroach/pkg/util/hlc"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
 	"github.com/cockroachdb/cockroach/pkg/util/quotapool"
-	"github.com/cockroachdb/cockroach/pkg/util/stop"
 	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/cockroach/pkg/util/uuid"
 	"github.com/cockroachdb/errors"
@@ -708,139 +704,139 @@ func (*Replica) sha512(
 }
 
 func (r *Replica) computeChecksumPostApply(ctx context.Context, cc kvserverpb.ComputeChecksum) {
-	stopper := r.store.Stopper()
-	now := timeutil.Now()
-	r.mu.Lock()
-	var notify chan struct{}
-	if c, ok := r.mu.checksums[cc.ChecksumID]; !ok {
-		// There is no record of this ID. Make a new notification.
-		notify = make(chan struct{})
-	} else if !c.started {
-		// A CollectChecksumRequest is waiting on the existing notification.
-		notify = c.notify
-	} else {
-		log.Fatalf(ctx, "attempted to apply ComputeChecksum command with duplicated checksum ID %s",
-			cc.ChecksumID)
-	}
+	//stopper := r.store.Stopper()
+	//now := timeutil.Now()
+	//r.mu.Lock()
+	//var notify chan struct{}
+	//if c, ok := r.mu.checksums[cc.ChecksumID]; !ok {
+	//	// There is no record of this ID. Make a new notification.
+	//	notify = make(chan struct{})
+	//} else if !c.started {
+	//	// A CollectChecksumRequest is waiting on the existing notification.
+	//	notify = c.notify
+	//} else {
+	//	log.Fatalf(ctx, "attempted to apply ComputeChecksum command with duplicated checksum ID %s",
+	//		cc.ChecksumID)
+	//}
 
-	r.gcOldChecksumEntriesLocked(now)
+	//r.gcOldChecksumEntriesLocked(now)
 
-	// Create an entry with checksum == nil and gcTimestamp unset.
-	r.mu.checksums[cc.ChecksumID] = replicaChecksum{started: true, notify: notify}
-	desc := *r.mu.state.Desc
-	r.mu.Unlock()
+	//// Create an entry with checksum == nil and gcTimestamp unset.
+	//r.mu.checksums[cc.ChecksumID] = replicaChecksum{started: true, notify: notify}
+	//desc := *r.mu.state.Desc
+	//r.mu.Unlock()
 
-	if cc.Version != batcheval.ReplicaChecksumVersion {
-		r.computeChecksumDone(ctx, cc.ChecksumID, nil, nil)
-		log.Infof(ctx, "incompatible ComputeChecksum versions (requested: %d, have: %d)",
-			cc.Version, batcheval.ReplicaChecksumVersion)
-		return
-	}
+	//if cc.Version != batcheval.ReplicaChecksumVersion {
+	//	r.computeChecksumDone(ctx, cc.ChecksumID, nil, nil)
+	//	log.Infof(ctx, "incompatible ComputeChecksum versions (requested: %d, have: %d)",
+	//		cc.Version, batcheval.ReplicaChecksumVersion)
+	//	return
+	//}
 
-	// Caller is holding raftMu, so an engine snapshot is automatically
-	// Raft-consistent (i.e. not in the middle of an AddSSTable).
-	snap := r.store.engine.NewSnapshot()
-	if cc.Checkpoint {
-		sl := stateloader.Make(r.RangeID)
-		as, err := sl.LoadRangeAppliedState(ctx, snap)
-		if err != nil {
-			log.Warningf(ctx, "unable to load applied index, continuing anyway")
-		}
-		// NB: the names here will match on all nodes, which is nice for debugging.
-		tag := fmt.Sprintf("r%d_at_%d", r.RangeID, as.RaftAppliedIndex)
-		if dir, err := r.store.checkpoint(ctx, tag); err != nil {
-			log.Warningf(ctx, "unable to create checkpoint %s: %+v", dir, err)
-		} else {
-			log.Warningf(ctx, "created checkpoint %s", dir)
-		}
-	}
+	//// Caller is holding raftMu, so an engine snapshot is automatically
+	//// Raft-consistent (i.e. not in the middle of an AddSSTable).
+	//snap := r.store.engine.NewSnapshot()
+	//if cc.Checkpoint {
+	//	sl := stateloader.Make(r.RangeID)
+	//	as, err := sl.LoadRangeAppliedState(ctx, snap)
+	//	if err != nil {
+	//		log.Warningf(ctx, "unable to load applied index, continuing anyway")
+	//	}
+	//	// NB: the names here will match on all nodes, which is nice for debugging.
+	//	tag := fmt.Sprintf("r%d_at_%d", r.RangeID, as.RaftAppliedIndex)
+	//	if dir, err := r.store.checkpoint(ctx, tag); err != nil {
+	//		log.Warningf(ctx, "unable to create checkpoint %s: %+v", dir, err)
+	//	} else {
+	//		log.Warningf(ctx, "created checkpoint %s", dir)
+	//	}
+	//}
 
-	// Compute SHA asynchronously and store it in a map by UUID. Concurrent checks
-	// share the rate limit in r.store.consistencyLimiter, so we also limit the
-	// number of concurrent checks via r.store.consistencySem.
+	//// Compute SHA asynchronously and store it in a map by UUID. Concurrent checks
+	//// share the rate limit in r.store.consistencyLimiter, so we also limit the
+	//// number of concurrent checks via r.store.consistencySem.
+	////
+	//// Don't use the proposal's context for this, as it likely to be canceled very
+	//// soon.
+	//const taskName = "storage.Replica: computing checksum"
+	//sem := r.store.consistencySem
+	//if cc.Mode == roachpb.ChecksumMode_CHECK_STATS {
+	//	// Stats-only checks are cheap, and the DistSender parallelizes these across
+	//	// ranges (in particular when calling crdb_internal.check_consistency()), so
+	//	// they don't count towards the semaphore limit.
+	//	sem = nil
+	//}
+	//if err := stopper.RunAsyncTaskEx(r.AnnotateCtx(context.Background()), stop.TaskOpts{
+	//	TaskName:   taskName,
+	//	Sem:        sem,
+	//	WaitForSem: false,
+	//}, func(ctx context.Context) {
+	//	if err := contextutil.RunWithTimeout(ctx, taskName, consistencyCheckAsyncTimeout,
+	//		func(ctx context.Context) error {
+	//			defer snap.Close()
+	//			var snapshot *roachpb.RaftSnapshotData
+	//			if cc.SaveSnapshot {
+	//				snapshot = &roachpb.RaftSnapshotData{}
+	//			}
+
+	//			result, err := r.sha512(ctx, desc, snap, snapshot, cc.Mode, r.store.consistencyLimiter)
+	//			if err != nil {
+	//				result = nil
+	//			}
+	//			r.computeChecksumDone(ctx, cc.ChecksumID, result, snapshot)
+	//			return err
+	//		},
+	//	); err != nil {
+	//		log.Errorf(ctx, "checksum computation failed: %v", err)
+	//	}
+
+	//	var shouldFatal bool
+	//	for _, rDesc := range cc.Terminate {
+	//		if rDesc.StoreID == r.store.StoreID() && rDesc.ReplicaID == r.replicaID {
+	//			shouldFatal = true
+	//		}
+	//	}
+
+	//	if shouldFatal {
+	//		// This node should fatal as a result of a previous consistency
+	//		// check (i.e. this round is carried out only to obtain a diff).
+	//		// If we fatal too early, the diff won't make it back to the lease-
+	//		// holder and thus won't be printed to the logs. Since we're already
+	//		// in a goroutine that's about to end, simply sleep for a few seconds
+	//		// and then terminate.
+	//		auxDir := r.store.engine.GetAuxiliaryDir()
+	//		_ = r.store.engine.MkdirAll(auxDir)
+	//		path := base.PreventedStartupFile(auxDir)
+
+	//		const attentionFmt = `ATTENTION:
+
+	//this node is terminating because a replica inconsistency was detected between %s
+	//and its other replicas. Please check your cluster-wide log files for more
+	//information and contact the CockroachDB support team. It is not necessarily safe
+	//to replace this node; cluster data may still be at risk of corruption.
 	//
-	// Don't use the proposal's context for this, as it likely to be canceled very
-	// soon.
-	const taskName = "storage.Replica: computing checksum"
-	sem := r.store.consistencySem
-	if cc.Mode == roachpb.ChecksumMode_CHECK_STATS {
-		// Stats-only checks are cheap, and the DistSender parallelizes these across
-		// ranges (in particular when calling crdb_internal.check_consistency()), so
-		// they don't count towards the semaphore limit.
-		sem = nil
-	}
-	if err := stopper.RunAsyncTaskEx(r.AnnotateCtx(context.Background()), stop.TaskOpts{
-		TaskName:   taskName,
-		Sem:        sem,
-		WaitForSem: false,
-	}, func(ctx context.Context) {
-		if err := contextutil.RunWithTimeout(ctx, taskName, consistencyCheckAsyncTimeout,
-			func(ctx context.Context) error {
-				defer snap.Close()
-				var snapshot *roachpb.RaftSnapshotData
-				if cc.SaveSnapshot {
-					snapshot = &roachpb.RaftSnapshotData{}
-				}
+	//A checkpoints directory to aid (expert) debugging should be present in:
+	//%s
+	//
+	//A file preventing this node from restarting was placed at:
+	//%s
+	//`
+	//		preventStartupMsg := fmt.Sprintf(attentionFmt, r, auxDir, path)
+	//		if err := fs.WriteFile(r.store.engine, path, []byte(preventStartupMsg)); err != nil {
+	//			log.Warningf(ctx, "%v", err)
+	//		}
 
-				result, err := r.sha512(ctx, desc, snap, snapshot, cc.Mode, r.store.consistencyLimiter)
-				if err != nil {
-					result = nil
-				}
-				r.computeChecksumDone(ctx, cc.ChecksumID, result, snapshot)
-				return err
-			},
-		); err != nil {
-			log.Errorf(ctx, "checksum computation failed: %v", err)
-		}
+	//		if p := r.store.cfg.TestingKnobs.ConsistencyTestingKnobs.OnBadChecksumFatal; p != nil {
+	//			p(*r.store.Ident)
+	//		} else {
+	//			time.Sleep(10 * time.Second)
+	//			log.Fatalf(r.AnnotateCtx(context.Background()), attentionFmt, r, auxDir, path)
+	//		}
+	//	}
 
-		var shouldFatal bool
-		for _, rDesc := range cc.Terminate {
-			if rDesc.StoreID == r.store.StoreID() && rDesc.ReplicaID == r.replicaID {
-				shouldFatal = true
-			}
-		}
-
-		if shouldFatal {
-			// This node should fatal as a result of a previous consistency
-			// check (i.e. this round is carried out only to obtain a diff).
-			// If we fatal too early, the diff won't make it back to the lease-
-			// holder and thus won't be printed to the logs. Since we're already
-			// in a goroutine that's about to end, simply sleep for a few seconds
-			// and then terminate.
-			auxDir := r.store.engine.GetAuxiliaryDir()
-			_ = r.store.engine.MkdirAll(auxDir)
-			path := base.PreventedStartupFile(auxDir)
-
-			const attentionFmt = `ATTENTION:
-
-this node is terminating because a replica inconsistency was detected between %s
-and its other replicas. Please check your cluster-wide log files for more
-information and contact the CockroachDB support team. It is not necessarily safe
-to replace this node; cluster data may still be at risk of corruption.
-
-A checkpoints directory to aid (expert) debugging should be present in:
-%s
-
-A file preventing this node from restarting was placed at:
-%s
-`
-			preventStartupMsg := fmt.Sprintf(attentionFmt, r, auxDir, path)
-			if err := fs.WriteFile(r.store.engine, path, []byte(preventStartupMsg)); err != nil {
-				log.Warningf(ctx, "%v", err)
-			}
-
-			if p := r.store.cfg.TestingKnobs.ConsistencyTestingKnobs.OnBadChecksumFatal; p != nil {
-				p(*r.store.Ident)
-			} else {
-				time.Sleep(10 * time.Second)
-				log.Fatalf(r.AnnotateCtx(context.Background()), attentionFmt, r, auxDir, path)
-			}
-		}
-
-	}); err != nil {
-		defer snap.Close()
-		log.Errorf(ctx, "could not run async checksum computation (ID = %s): %v", cc.ChecksumID, err)
-		// Set checksum to nil.
-		r.computeChecksumDone(ctx, cc.ChecksumID, nil, nil)
-	}
+	//}); err != nil {
+	//	defer snap.Close()
+	//	log.Errorf(ctx, "could not run async checksum computation (ID = %s): %v", cc.ChecksumID, err)
+	//	// Set checksum to nil.
+	//	r.computeChecksumDone(ctx, cc.ChecksumID, nil, nil)
+	//}
 }

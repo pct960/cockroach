@@ -142,6 +142,8 @@ func (r *Replica) evalAndPropose(
 	//    and that no Raft command needs to be proposed.
 	// 2. pErr != nil corresponds to a failed proposal - the command resulted
 	//    in an error.
+
+	//XXX: Look into this
 	if proposal.command == nil {
 		if proposal.Local.RequiresRaft() {
 			return nil, nil, "", roachpb.NewError(errors.AssertionFailedf(
@@ -277,19 +279,21 @@ func (r *Replica) evalAndPropose(
 		return nil, nil, "", pErr
 	}
 
-	if ba.EarlyRaftReturn {
-		// Fork the proposal's context span so that the proposal's context
-		// can outlive the original proposer's context.
-		proposal.ctx, proposal.sp = tracing.ForkSpan(ctx, "async consensus")
+	//log.Infof(ctx, "NODE ID (%s)", ba.GatewayNodeID.String())
 
-		// Signal the proposal's response channel immediately.
-		reply := *proposal.Local.Reply
-		reply.Responses = append([]roachpb.ResponseUnion(nil), reply.Responses...)
+	if ba.EarlyRaftReturn {
+		intents := proposal.Local.DetachEncounteredIntents()
+		endTxns := proposal.Local.DetachEndTxns(pErr != nil /* alwaysOnly */)
+		r.handleReadWriteLocalEvalResult(ctx, *proposal.Local)
+
 		pr := proposalResult{
-			Reply:              &reply,
-			EncounteredIntents: proposal.Local.DetachEncounteredIntents(),
+			Reply: proposal.Local.Reply,
+			//Err:                pErr,
+			EncounteredIntents: intents,
+			EndTxns:            endTxns,
 		}
-		proposal.signalProposalResult(pr)
+		proposal.finishApplication(ctx, pr)
+		//return proposalCh, func() {}, "", nil
 	}
 
 	// Abandoning a proposal unbinds its context so that the proposal's client

@@ -18,7 +18,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/settings"
 	"github.com/cockroachdb/cockroach/pkg/spanconfig"
 	"github.com/cockroachdb/cockroach/pkg/util/envutil"
-	"github.com/cockroachdb/cockroach/pkg/util/grpcutil"
 	"github.com/cockroachdb/cockroach/pkg/util/hlc"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 )
@@ -186,37 +185,37 @@ func (q *consistencyQueue) process(
 		log.VErrEventf(ctx, 2, "failed to update last processed time: %v", err)
 	}
 
-	req := roachpb.CheckConsistencyRequest{
-		// Tell CheckConsistency that the caller is the queue. This triggers
-		// code to handle inconsistencies by recomputing with a diff and
-		// instructing the nodes in the minority to terminate with a fatal
-		// error. It also triggers a stats readjustment if there is no
-		// inconsistency but the persisted stats are found to disagree with
-		// those reflected in the data. All of this really ought to be lifted
-		// into the queue in the future.
-		Mode: roachpb.ChecksumMode_CHECK_VIA_QUEUE,
-	}
-	resp, pErr := repl.CheckConsistency(ctx, req)
-	if pErr != nil {
-		var shouldQuiesce bool
-		select {
-		case <-repl.store.Stopper().ShouldQuiesce():
-			shouldQuiesce = true
-		default:
-		}
+	//req := roachpb.CheckConsistencyRequest{
+	//	// Tell CheckConsistency that the caller is the queue. This triggers
+	//	// code to handle inconsistencies by recomputing with a diff and
+	//	// instructing the nodes in the minority to terminate with a fatal
+	//	// error. It also triggers a stats readjustment if there is no
+	//	// inconsistency but the persisted stats are found to disagree with
+	//	// those reflected in the data. All of this really ought to be lifted
+	//	// into the queue in the future.
+	//	Mode: roachpb.ChecksumMode_CHECK_VIA_QUEUE,
+	//}
+	//resp, pErr := repl.CheckConsistency(ctx, req)
+	//if pErr != nil {
+	//	var shouldQuiesce bool
+	//	select {
+	//	case <-repl.store.Stopper().ShouldQuiesce():
+	//		shouldQuiesce = true
+	//	default:
+	//	}
 
-		if shouldQuiesce && grpcutil.IsClosedConnection(pErr.GoError()) {
-			// Suppress noisy errors about closed GRPC connections when the
-			// server is quiescing.
-			return false, nil
-		}
-		err := pErr.GoError()
-		log.Errorf(ctx, "%v", err)
-		return false, err
-	}
-	if fn := repl.store.cfg.TestingKnobs.ConsistencyTestingKnobs.ConsistencyQueueResultHook; fn != nil {
-		fn(resp)
-	}
+	//	if shouldQuiesce && grpcutil.IsClosedConnection(pErr.GoError()) {
+	//		// Suppress noisy errors about closed GRPC connections when the
+	//		// server is quiescing.
+	//		return false, nil
+	//	}
+	//	err := pErr.GoError()
+	//	log.Errorf(ctx, "%v", err)
+	//	return false, err
+	//}
+	//if fn := repl.store.cfg.TestingKnobs.ConsistencyTestingKnobs.ConsistencyQueueResultHook; fn != nil {
+	//	fn(resp)
+	//}
 	return true, nil
 }
 
