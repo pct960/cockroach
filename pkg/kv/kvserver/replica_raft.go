@@ -293,7 +293,7 @@ func (r *Replica) evalAndPropose(
 			EndTxns:            endTxns,
 		}
 		proposal.finishApplication(ctx, pr)
-		//return proposalCh, func() {}, "", nil
+		return proposalCh, func() {}, "", nil
 	}
 
 	// Abandoning a proposal unbinds its context so that the proposal's client
