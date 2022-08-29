@@ -279,9 +279,8 @@ func (r *Replica) evalAndPropose(
 		return nil, nil, "", pErr
 	}
 
-	//log.Infof(ctx, "NODE ID (%s)", ba.GatewayNodeID.String())
-
 	if ba.EarlyRaftReturn {
+		//log.Info(ctx, "in err return snippet")
 		intents := proposal.Local.DetachEncounteredIntents()
 		endTxns := proposal.Local.DetachEndTxns(pErr != nil /* alwaysOnly */)
 		r.handleReadWriteLocalEvalResult(ctx, *proposal.Local)
@@ -293,8 +292,10 @@ func (r *Replica) evalAndPropose(
 			EndTxns:            endTxns,
 		}
 		proposal.finishApplication(ctx, pr)
-		return proposalCh, func() {}, "", nil
+		//return proposalCh, func() {}, "", nil
 	}
+
+	//log.Infof(ctx, "NODE ID (%s)", ba.GatewayNodeID.String())
 
 	// Abandoning a proposal unbinds its context so that the proposal's client
 	// is free to terminate execution. However, it does nothing to try to
