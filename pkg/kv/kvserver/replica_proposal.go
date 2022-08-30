@@ -636,6 +636,7 @@ type proposalResult struct {
 	Err                *roachpb.Error
 	EncounteredIntents []roachpb.Intent
 	EndTxns            []result.EndTxnIntents
+	EarlyReturn        bool
 }
 
 // evaluateProposal generates a Result from the given request by

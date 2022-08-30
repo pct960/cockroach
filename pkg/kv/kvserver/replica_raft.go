@@ -280,19 +280,34 @@ func (r *Replica) evalAndPropose(
 	}
 
 	if ba.EarlyRaftReturn {
-		//log.Info(ctx, "in err return snippet")
-		intents := proposal.Local.DetachEncounteredIntents()
-		endTxns := proposal.Local.DetachEndTxns(pErr != nil /* alwaysOnly */)
-		r.handleReadWriteLocalEvalResult(ctx, *proposal.Local)
+		////log.Info(ctx, "in err return snippet")
+		//intents := proposal.Local.DetachEncounteredIntents()
+		//endTxns := proposal.Local.DetachEndTxns(pErr != nil /* alwaysOnly */)
+		//r.handleReadWriteLocalEvalResult(ctx, *proposal.Local)
 
+		//pr := proposalResult{
+		//	Reply: proposal.Local.Reply,
+		//	//Err:                pErr,
+		//	EncounteredIntents: intents,
+		//	EndTxns:            endTxns,
+		//	EarlyReturn:        true,
+		//}
+		//proposal.finishApplication(ctx, pr)
+		//return proposalCh, func() {}, idKey, nil
+
+		// Fork the proposal's context span so that the proposal's context
+		// can outlive the original proposer's context.
+		proposal.ctx, proposal.sp = tracing.ForkSpan(ctx, "early raft return")
+
+		// Signal the proposal's response channel immediately.
+		reply := *proposal.Local.Reply
+		reply.Responses = append([]roachpb.ResponseUnion(nil), reply.Responses...)
 		pr := proposalResult{
-			Reply: proposal.Local.Reply,
-			//Err:                pErr,
-			EncounteredIntents: intents,
-			EndTxns:            endTxns,
+			Reply:              &reply,
+			EncounteredIntents: proposal.Local.DetachEncounteredIntents(),
 		}
+		//proposal.signalProposalResult(pr)
 		proposal.finishApplication(ctx, pr)
-		//return proposalCh, func() {}, "", nil
 	}
 
 	//log.Infof(ctx, "NODE ID (%s)", ba.GatewayNodeID.String())

@@ -90,6 +90,8 @@ func QueryIntent(
 		return result.Result{}, err
 	}
 
+	//reply.FoundIntent = true
+
 	var curIntentPushed bool
 	if intent != nil {
 		// See comment on QueryIntentRequest.Txn for an explanation of this
