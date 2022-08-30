@@ -280,6 +280,7 @@ func (r *Replica) evalAndPropose(
 	}
 
 	if ba.EarlyRaftReturn {
+		log.VEvent(proposal.ctx, 2, "In ERR path")
 		////log.Info(ctx, "in err return snippet")
 		//intents := proposal.Local.DetachEncounteredIntents()
 		//endTxns := proposal.Local.DetachEndTxns(pErr != nil /* alwaysOnly */)
