@@ -707,6 +707,7 @@ func (r *Replica) evaluateProposal(
 		if err := batch.Commit(true); err != nil {
 			log.Fatal(ctx, "Could not commit batch")
 		}
+		log.VEvent(ctx, 2, "Committed batch")
 	}
 
 	// Set the local reply, which is held only on the proposing replica and is
