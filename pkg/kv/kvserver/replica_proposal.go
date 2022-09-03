@@ -707,7 +707,7 @@ func (r *Replica) evaluateProposal(
 	}
 
 	if batch != nil && ba.EarlyRaftReturn {
-		if err := batch.Commit(true); err != nil {
+		if err := batch.Commit(false); err != nil {
 			log.Fatal(ctx, "Could not commit batch")
 		}
 		log.VEvent(ctx, 2, "Committed batch")
