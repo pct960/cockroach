@@ -279,6 +279,7 @@ func (r *Replica) evalAndPropose(
 		return nil, nil, "", pErr
 	}
 
+	//log.Infof(ctx, "NODE ID (%s)", ba.GatewayNodeID.String())
 	if ba.EarlyRaftReturn {
 		log.VEvent(proposal.ctx, 2, "In ERR path")
 		////log.Info(ctx, "in err return snippet")
@@ -298,7 +299,7 @@ func (r *Replica) evalAndPropose(
 
 		// Fork the proposal's context span so that the proposal's context
 		// can outlive the original proposer's context.
-		proposal.ctx, proposal.sp = tracing.ForkSpan(ctx, "early raft return")
+		//proposal.ctx, proposal.sp = tracing.ForkSpan(ctx, "early raft return")
 
 		// Signal the proposal's response channel immediately.
 		reply := *proposal.Local.Reply
@@ -308,10 +309,9 @@ func (r *Replica) evalAndPropose(
 			EncounteredIntents: proposal.Local.DetachEncounteredIntents(),
 		}
 		//proposal.signalProposalResult(pr)
+		log.VEvent(proposal.ctx, 2, "Finish application in replica_raft")
 		proposal.finishApplication(ctx, pr)
 	}
-
-	//log.Infof(ctx, "NODE ID (%s)", ba.GatewayNodeID.String())
 
 	// Abandoning a proposal unbinds its context so that the proposal's client
 	// is free to terminate execution. However, it does nothing to try to

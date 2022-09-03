@@ -2061,6 +2061,7 @@ func (ds *DistSender) sendToReplicas(
 		}
 		br, err = transport.SendNext(ctx, ba)
 		ds.maybeIncrementErrCounters(br, err)
+		log.VEvent(ctx, 2, "distSender received response")
 
 		if err != nil {
 			if grpcutil.IsAuthError(err) {

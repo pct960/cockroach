@@ -143,11 +143,13 @@ type ProposalData struct {
 // returned to the client.
 func (proposal *ProposalData) finishApplication(ctx context.Context, pr proposalResult) {
 	proposal.ec.done(ctx, proposal.Request, pr.Reply, pr.Err)
+	log.Event(proposal.ctx, "Latches released")
 	proposal.signalProposalResult(pr)
 	if proposal.sp != nil {
 		proposal.sp.Finish()
 		proposal.sp = nil
 	}
+	log.Event(proposal.ctx, "Finished application")
 }
 
 // returnProposalResult signals proposal.doneCh with the proposal result if it
@@ -160,6 +162,7 @@ func (proposal *ProposalData) finishApplication(ctx context.Context, pr proposal
 func (proposal *ProposalData) signalProposalResult(pr proposalResult) {
 	if proposal.doneCh != nil {
 		proposal.doneCh <- pr
+		log.Event(proposal.ctx, "Signalled doneCh")
 		proposal.doneCh = nil
 		// Need to remove any span from the proposal, as the signalled caller
 		// will likely finish it, and if we then end up applying this proposal
