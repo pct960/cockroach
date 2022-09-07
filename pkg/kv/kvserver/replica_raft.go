@@ -270,6 +270,9 @@ func (r *Replica) evalAndPropose(
 	if pErr != nil {
 		return nil, nil, "", pErr
 	}
+
+	log.VEventf(proposal.ctx, 2, "Proposed to raft at (%s)", time.Now().Format("2006-01-02 15:04:05.000000000"))
+
 	// Abandoning a proposal unbinds its context so that the proposal's client
 	// is free to terminate execution. However, it does nothing to try to
 	// prevent the command from succeeding. In particular, endCmds will still be
