@@ -493,7 +493,7 @@ func (b *replicaAppBatch) Stage(
 		if err := b.assertNoWriteBelowClosedTimestamp(cmd); err != nil {
 			return nil, err
 		}
-		log.Event(ctx, "applying command")
+		log.Eventf(ctx, "applying command at (%s)", time.Now().Format("2006-01-02 15:04:05.000000000"))
 	}
 
 	// Acquire the split or merge lock, if necessary. If a split or merge
