@@ -1013,7 +1013,6 @@ func (ds *DistSender) divideAndSendParallelCommit(
 	// the responses together.
 	qiReply := <-qiResponseCh
 
-
 	// Handle error conditions.
 	if pErr != nil {
 		// The batch with the EndTxn returned an error. Ignore errors from the
@@ -2062,7 +2061,6 @@ func (ds *DistSender) sendToReplicas(
 		}
 		br, err = transport.SendNext(ctx, ba)
 
-		log.VEventf(ctx, 2, "Distsender received response at (%s)", time.Now().Format("2006-01-02 15:04:05.000000000"))
 		ds.maybeIncrementErrCounters(br, err)
 
 		if err != nil {

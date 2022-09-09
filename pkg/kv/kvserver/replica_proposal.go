@@ -142,6 +142,7 @@ type ProposalData struct {
 func (proposal *ProposalData) finishApplication(ctx context.Context, pr proposalResult) {
 	proposal.ec.done(ctx, proposal.Request, pr.Reply, pr.Err)
 	proposal.signalProposalResult(pr)
+	log.VEventf(ctx, 2, "Signalled doneCh at (%s)", time.Now().Format("2006-01-02 15:04:05.000000000"))
 	if proposal.sp != nil {
 		proposal.sp.Finish()
 		proposal.sp = nil
