@@ -145,6 +145,7 @@ func (proposal *ProposalData) finishApplication(ctx context.Context, pr proposal
 	proposal.ec.done(ctx, proposal.Request, pr.Reply, pr.Err)
 	log.Event(proposal.ctx, "Latches released")
 	proposal.signalProposalResult(pr)
+	log.Eventf(ctx, "Signalled doneCh at (%s)", time.Now().Format("2006-01-02 15:04:05.000000000"))
 	if proposal.sp != nil {
 		proposal.sp.Finish()
 		proposal.sp = nil

@@ -931,9 +931,14 @@ func (b *replicaAppBatch) ApplyToStateMachine(ctx context.Context) error {
 	// before ensuring that the replica's data has been synchronously removed.
 	// See handleChangeReplicasResult().
 	sync := b.changeRemovesReplica
+
+	// Don't commit pebble batch again if it has already been committed
+	// in replica_proposal.go because of the EarlyRaftReturn flag
+	//if (b.r.ReplicaID() == b.r.mu.leaderID) && !b.batch.EarlyRaftReturn {
 	if err := b.batch.Commit(sync); err != nil {
 		return wrapWithNonDeterministicFailure(err, "unable to commit Raft entry batch")
 	}
+	//}
 	b.batch.Close()
 	b.batch = nil
 

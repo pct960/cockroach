@@ -279,6 +279,8 @@ func (r *Replica) evalAndPropose(
 		return nil, nil, "", pErr
 	}
 
+	log.VEventf(proposal.ctx, 2, "Proposed to raft at (%s)", time.Now().Format("2006-01-02 15:04:05.000000000"))
+
 	//log.Infof(ctx, "NODE ID (%s)", ba.GatewayNodeID.String())
 	if ba.EarlyRaftReturn {
 		log.VEvent(proposal.ctx, 2, "In ERR path")
