@@ -871,6 +871,12 @@ func (ds *DistSender) Send(
 		lastHeader.CollectedSpans = reply.CollectedSpans
 		reply.BatchResponse_Header = lastHeader
 
+		if ba.EarlyRaftReturn {
+			reply.EarlyRaftReturn = true
+		} else {
+			reply.EarlyRaftReturn = false
+		}
+
 		if ds.kvInterceptor != nil {
 			respInfo := tenantcostmodel.MakeResponseInfo(reply)
 			ds.kvInterceptor.OnResponse(ctx, reqInfo, respInfo)

@@ -198,17 +198,21 @@ func (r *Replica) executeWriteBatch(
 			// outstanding asynchronous resolution tasks allowed after which
 			// further calls will block.
 			if len(propResult.EndTxns) > 0 {
-				if err := r.store.intentResolver.CleanupTxnIntentsAsync(
-					ctx, r.RangeID, propResult.EndTxns, true, /* allowSync */
-				); err != nil {
-					log.Warningf(ctx, "transaction cleanup failed: %v", err)
+				if !propResult.EarlyReturn {
+					if err := r.store.intentResolver.CleanupTxnIntentsAsync(
+						ctx, r.RangeID, propResult.EndTxns, true, /* allowSync */
+					); err != nil {
+						log.Warningf(ctx, "transaction cleanup failed: %v", err)
+					}
 				}
 			}
 			if len(propResult.EncounteredIntents) > 0 {
-				if err := r.store.intentResolver.CleanupIntentsAsync(
-					ctx, propResult.EncounteredIntents, true, /* allowSync */
-				); err != nil {
-					log.Warningf(ctx, "intent cleanup failed: %v", err)
+				if !propResult.EarlyReturn {
+					if err := r.store.intentResolver.CleanupIntentsAsync(
+						ctx, propResult.EncounteredIntents, true, /* allowSync */
+					); err != nil {
+						log.Warningf(ctx, "intent cleanup failed: %v", err)
+					}
 				}
 			}
 			if ba.Requests[0].GetMigrate() != nil && propResult.Err == nil {

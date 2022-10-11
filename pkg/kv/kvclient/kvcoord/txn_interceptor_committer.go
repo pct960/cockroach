@@ -253,7 +253,10 @@ func (tc *txnCommitter) SendLocked(
 	// we transition to an explicitly committed transaction as soon as possible.
 	// This also has the side-effect of kicking off intent resolution.
 	mergedLockSpans, _ := mergeIntoSpans(et.LockSpans, et.InFlightWrites)
-	tc.makeTxnCommitExplicitAsync(ctx, br.Txn, mergedLockSpans)
+
+	if !br.EarlyRaftReturn {
+		tc.makeTxnCommitExplicitAsync(ctx, br.Txn, mergedLockSpans)
+	}
 
 	// Switch the status on the batch response's transaction to COMMITTED. No
 	// interceptor above this one in the stack should ever need to deal with

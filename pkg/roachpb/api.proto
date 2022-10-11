@@ -2623,6 +2623,7 @@ message BatchResponse {
   }
   Header header = 1 [(gogoproto.nullable) = false, (gogoproto.embed) = true];
   repeated ResponseUnion responses = 2 [(gogoproto.nullable) = false];
+  bool early_raft_return = 4;
 }
 
 // RangeLookupRequest is a request to proxy a RangeLookup through a Tenant
