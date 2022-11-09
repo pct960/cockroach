@@ -644,7 +644,7 @@ func MVCCPutProto(
 		return err
 	}
 	value.InitChecksum(key)
-	return MVCCPut(ctx, rw, ms, key, timestamp, value, txn)
+	return MVCCPut(ctx, rw, ms, key, timestamp, value, txn, true /* durable */)
 }
 
 // MVCCBlindPutProto sets the given key to the protobuf-serialized byte string
@@ -941,7 +941,7 @@ func (b *putBuffer) putInlineMeta(
 var trueValue = true
 
 func (b *putBuffer) putIntentMeta(
-	ctx context.Context, writer Writer, key MVCCKey, meta *enginepb.MVCCMetadata, alreadyExists bool,
+	ctx context.Context, writer Writer, key MVCCKey, meta *enginepb.MVCCMetadata, alreadyExists bool, durable bool,
 ) (keyBytes, valBytes int64, err error) {
 	if meta.Txn != nil && meta.Timestamp.ToTimestamp() != meta.Txn.WriteTimestamp {
 		// The timestamps are supposed to be in sync. If they weren't, it wouldn't
@@ -959,7 +959,7 @@ func (b *putBuffer) putIntentMeta(
 	if err != nil {
 		return 0, 0, err
 	}
-	if err = writer.PutIntent(ctx, key.Key, bytes, meta.Txn.ID); err != nil {
+	if err = writer.PutIntent(ctx, key.Key, bytes, meta.Txn.ID, durable); err != nil {
 		return 0, 0, err
 	}
 	return int64(key.EncodedSize()), int64(len(bytes)), nil
@@ -989,6 +989,7 @@ func MVCCPut(
 	timestamp hlc.Timestamp,
 	value roachpb.Value,
 	txn *roachpb.Transaction,
+	durable bool,
 ) error {
 	// If we're not tracking stats for the key and we're writing a non-versioned
 	// key we can utilize a blind put to avoid reading any existing value.
@@ -998,7 +999,7 @@ func MVCCPut(
 		iter = rw.NewMVCCIterator(MVCCKeyAndIntentsIterKind, IterOptions{Prefix: true})
 		defer iter.Close()
 	}
-	return mvccPutUsingIter(ctx, rw, iter, ms, key, timestamp, value, txn, nil /* valueFn */)
+	return mvccPutUsingIter(ctx, rw, iter, ms, key, timestamp, value, txn, durable, nil /* valueFn */)
 }
 
 // MVCCBlindPut is a fast-path of MVCCPut. See the MVCCPut comments for details
@@ -1020,7 +1021,7 @@ func MVCCBlindPut(
 	value roachpb.Value,
 	txn *roachpb.Transaction,
 ) error {
-	return mvccPutUsingIter(ctx, writer, nil, ms, key, timestamp, value, txn, nil /* valueFn */)
+	return mvccPutUsingIter(ctx, writer, nil, ms, key, timestamp, value, txn, true /* durable */, nil /* valueFn */)
 }
 
 // MVCCDelete marks the key deleted so that it will not be returned in
@@ -1040,7 +1041,7 @@ func MVCCDelete(
 	iter := newMVCCIterator(rw, timestamp.IsEmpty(), IterOptions{Prefix: true})
 	defer iter.Close()
 
-	return mvccPutUsingIter(ctx, rw, iter, ms, key, timestamp, noValue, txn, nil /* valueFn */)
+	return mvccPutUsingIter(ctx, rw, iter, ms, key, timestamp, noValue, txn, true /* durable */, nil /* valueFn */)
 }
 
 var noValue = roachpb.Value{}
@@ -1058,6 +1059,7 @@ func mvccPutUsingIter(
 	timestamp hlc.Timestamp,
 	value roachpb.Value,
 	txn *roachpb.Transaction,
+	durable bool,
 	valueFn func(optionalValue) ([]byte, error),
 ) error {
 	var rawBytes []byte
@@ -1071,7 +1073,7 @@ func mvccPutUsingIter(
 	buf := newPutBuffer()
 
 	err := mvccPutInternal(ctx, writer, iter, ms, key, timestamp, rawBytes,
-		txn, buf, valueFn)
+		txn, buf, durable, valueFn)
 
 	// Using defer would be more convenient, but it is measurably slower.
 	buf.release()
@@ -1272,6 +1274,7 @@ func mvccPutInternal(
 	value []byte,
 	txn *roachpb.Transaction,
 	buf *putBuffer,
+	durable bool,
 	valueFn func(optionalValue) ([]byte, error),
 ) error {
 	if len(key) == 0 {
@@ -1595,7 +1598,7 @@ func mvccPutInternal(
 		alreadyExists := ok && buf.meta.Txn != nil
 		// Write the intent metadata key.
 		metaKeySize, metaValSize, err = buf.putIntentMeta(
-			ctx, writer, metaKey, newMeta, alreadyExists)
+			ctx, writer, metaKey, newMeta, alreadyExists, durable)
 		if err != nil {
 			return err
 		}
@@ -1664,7 +1667,7 @@ func MVCCIncrement(
 
 	var int64Val int64
 	var newInt64Val int64
-	err := mvccPutUsingIter(ctx, rw, iter, ms, key, timestamp, noValue, txn, func(value optionalValue) ([]byte, error) {
+	err := mvccPutUsingIter(ctx, rw, iter, ms, key, timestamp, noValue, txn, true /* durable */, func(value optionalValue) ([]byte, error) {
 		if value.IsPresent() {
 			var err error
 			if int64Val, err = value.GetInt(); err != nil {
@@ -1773,7 +1776,7 @@ func mvccConditionalPutUsingIter(
 	txn *roachpb.Transaction,
 ) error {
 	return mvccPutUsingIter(
-		ctx, writer, iter, ms, key, timestamp, noValue, txn,
+		ctx, writer, iter, ms, key, timestamp, noValue, txn, true, /* durable */
 		func(existVal optionalValue) ([]byte, error) {
 			if expValPresent, existValPresent := len(expBytes) != 0, existVal.IsPresent(); expValPresent && existValPresent {
 				if !bytes.Equal(expBytes, existVal.TagAndDataBytes()) {
@@ -1847,7 +1850,7 @@ func mvccInitPutUsingIter(
 	txn *roachpb.Transaction,
 ) error {
 	return mvccPutUsingIter(
-		ctx, rw, iter, ms, key, timestamp, noValue, txn,
+		ctx, rw, iter, ms, key, timestamp, noValue, txn, true, /* durable */
 		func(existVal optionalValue) ([]byte, error) {
 			if failOnTombstones && existVal.IsTombstone() {
 				// We found a tombstone and failOnTombstones is true: fail.
@@ -2189,7 +2192,7 @@ func MVCCDeleteRange(
 
 	var keys []roachpb.Key
 	for i, kv := range res.KVs {
-		if err := mvccPutInternal(ctx, rw, iter, ms, kv.Key, timestamp, nil, txn, buf, nil); err != nil {
+		if err := mvccPutInternal(ctx, rw, iter, ms, kv.Key, timestamp, nil, txn, buf, true /* durable */, nil); err != nil {
 			return nil, nil, 0, err
 		}
 		if returnKeys {
@@ -3050,7 +3053,7 @@ func mvccResolveWriteIntent(
 			// to do anything to update the intent but to move the timestamp forward,
 			// even if it can.
 			metaKeySize, metaValSize, err = buf.putIntentMeta(
-				ctx, rw, metaKey, &buf.newMeta, true /* alreadyExists */)
+				ctx, rw, metaKey, &buf.newMeta, true /* alreadyExists */, true /* durable */)
 		} else {
 			metaKeySize = int64(metaKey.EncodedSize())
 			err = rw.ClearIntent(metaKey.Key, canSingleDelHelper.onCommitIntent(), meta.Txn.ID)

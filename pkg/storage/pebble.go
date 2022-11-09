@@ -1168,9 +1168,9 @@ func (p *Pebble) PutUnversioned(key roachpb.Key, value []byte) error {
 
 // PutIntent implements the Engine interface.
 func (p *Pebble) PutIntent(
-	ctx context.Context, key roachpb.Key, value []byte, txnUUID uuid.UUID,
+	ctx context.Context, key roachpb.Key, value []byte, txnUUID uuid.UUID, durable bool,
 ) error {
-	_, err := p.wrappedIntentWriter.PutIntent(ctx, key, value, txnUUID, nil)
+	_, err := p.wrappedIntentWriter.PutIntent(ctx, key, value, txnUUID, nil, durable)
 	return err
 }
 
@@ -1973,7 +1973,7 @@ func (p *pebbleReadOnly) PutUnversioned(key roachpb.Key, value []byte) error {
 }
 
 func (p *pebbleReadOnly) PutIntent(
-	ctx context.Context, key roachpb.Key, value []byte, txnUUID uuid.UUID,
+	ctx context.Context, key roachpb.Key, value []byte, txnUUID uuid.UUID, durable bool,
 ) error {
 	panic("not implemented")
 }

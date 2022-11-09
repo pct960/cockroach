@@ -388,6 +388,7 @@ func (r *Replica) evaluateWriteBatch(
 	ba *roachpb.BatchRequest,
 	ui uncertainty.Interval,
 	g *concurrency.Guard,
+	durable bool,
 ) (storage.Batch, enginepb.MVCCStats, *roachpb.BatchResponse, result.Result, *roachpb.Error) {
 	log.Event(ctx, "executing read-write batch")
 
@@ -399,7 +400,7 @@ func (r *Replica) evaluateWriteBatch(
 	// Attempt 1PC execution, if applicable. If not transactional or there are
 	// indications that the batch's txn will require retry, execute as normal.
 	if r.canAttempt1PCEvaluation(ctx, ba, g) {
-		res := r.evaluate1PC(ctx, idKey, ba, g)
+		res := r.evaluate1PC(ctx, idKey, ba, g, durable)
 		switch res.success {
 		case onePCSucceeded:
 			return res.batch, res.stats, res.br, res.res, nil
@@ -430,7 +431,7 @@ func (r *Replica) evaluateWriteBatch(
 	ms := new(enginepb.MVCCStats)
 	rec := NewReplicaEvalContext(r, g.LatchSpans())
 	batch, br, res, pErr := r.evaluateWriteBatchWithServersideRefreshes(
-		ctx, idKey, rec, ms, ba, ui, g, nil /* deadline */)
+		ctx, idKey, rec, ms, ba, ui, g, nil /* deadline */, durable)
 	return batch, *ms, br, res, pErr
 }
 
@@ -470,7 +471,7 @@ type onePCResult struct {
 // efficient - we're avoiding writing the transaction record and writing and the
 // immediately deleting intents.
 func (r *Replica) evaluate1PC(
-	ctx context.Context, idKey kvserverbase.CmdIDKey, ba *roachpb.BatchRequest, g *concurrency.Guard,
+	ctx context.Context, idKey kvserverbase.CmdIDKey, ba *roachpb.BatchRequest, g *concurrency.Guard, durable bool,
 ) (onePCRes onePCResult) {
 	log.VEventf(ctx, 2, "attempting 1PC execution")
 
@@ -505,10 +506,10 @@ func (r *Replica) evaluate1PC(
 	ms := new(enginepb.MVCCStats)
 	if ba.CanForwardReadTimestamp {
 		batch, br, res, pErr = r.evaluateWriteBatchWithServersideRefreshes(
-			ctx, idKey, rec, ms, &strippedBa, ui, g, etArg.Deadline)
+			ctx, idKey, rec, ms, &strippedBa, ui, g, etArg.Deadline, durable)
 	} else {
 		batch, br, res, pErr = r.evaluateWriteBatchWrapper(
-			ctx, idKey, rec, ms, &strippedBa, ui, g)
+			ctx, idKey, rec, ms, &strippedBa, ui, g, durable)
 	}
 
 	if pErr != nil || (!ba.CanForwardReadTimestamp && ba.Timestamp != br.Timestamp) {
@@ -601,6 +602,7 @@ func (r *Replica) evaluateWriteBatchWithServersideRefreshes(
 	ui uncertainty.Interval,
 	g *concurrency.Guard,
 	deadline *hlc.Timestamp,
+	durable bool,
 ) (batch storage.Batch, br *roachpb.BatchResponse, res result.Result, pErr *roachpb.Error) {
 	goldenMS := *ms
 	for retries := 0; ; retries++ {
@@ -613,7 +615,7 @@ func (r *Replica) evaluateWriteBatchWithServersideRefreshes(
 			batch.Close()
 		}
 
-		batch, br, res, pErr = r.evaluateWriteBatchWrapper(ctx, idKey, rec, ms, ba, ui, g)
+		batch, br, res, pErr = r.evaluateWriteBatchWrapper(ctx, idKey, rec, ms, ba, ui, g, durable)
 
 		var success bool
 		if pErr == nil {
@@ -643,9 +645,10 @@ func (r *Replica) evaluateWriteBatchWrapper(
 	ba *roachpb.BatchRequest,
 	ui uncertainty.Interval,
 	g *concurrency.Guard,
+	durable bool,
 ) (storage.Batch, *roachpb.BatchResponse, result.Result, *roachpb.Error) {
 	batch, opLogger := r.newBatchedEngine(ba, g)
-	br, res, pErr := evaluateBatch(ctx, idKey, batch, rec, ms, ba, ui, false /* readOnly */)
+	br, res, pErr := evaluateBatch(ctx, idKey, batch, rec, ms, ba, ui, false /* readOnly */, durable)
 	if pErr == nil {
 		if opLogger != nil {
 			res.LogicalOpLog = &kvserverpb.LogicalOpLog{

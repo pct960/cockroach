@@ -670,7 +670,7 @@ func (r *Replica) append(
 			if !ok {
 				panic("expected writer to be a engine.ReadWriter when overwriting log entries")
 			}
-			err = storage.MVCCPut(ctx, eng, &diff, key, hlc.Timestamp{}, value, nil /* txn */)
+			err = storage.MVCCPut(ctx, eng, &diff, key, hlc.Timestamp{}, value, nil /* txn */, true /* durable */)
 		}
 		if err != nil {
 			return 0, 0, 0, err

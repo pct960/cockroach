@@ -677,7 +677,13 @@ func (r *Replica) evaluateProposal(
 	//
 	// TODO(tschottdorf): absorb all returned values in `res` below this point
 	// in the call stack as well.
-	batch, ms, br, res, pErr := r.evaluateWriteBatch(ctx, idKey, ba, ui, g)
+	batch, ms, br, res, pErr := r.evaluateWriteBatch(ctx, idKey, ba, ui, g, true /* durable */)
+
+	nonDurableBatch, _, _, _, pErr1 := r.evaluateWriteBatch(ctx, idKey, ba, ui, g, false /* durable */)
+
+	if pErr1 != nil {
+		log.Event(ctx, "Could not evaluate non durable batch")
+	}
 
 	// Note: reusing the proposer's batch when applying the command on the
 	// proposer was explored as an optimization but resulted in no performance
@@ -707,8 +713,8 @@ func (r *Replica) evaluateProposal(
 		return &res, false /* needConsensus */, pErr
 	}
 
-	if batch != nil && ba.EarlyRaftReturn {
-		if err := batch.Commit(false); err != nil {
+	if nonDurableBatch != nil && ba.EarlyRaftReturn {
+		if err := nonDurableBatch.Commit(false); err != nil {
 			log.Fatal(ctx, "Could not commit batch")
 		}
 		log.VEvent(ctx, 2, "Committed batch")

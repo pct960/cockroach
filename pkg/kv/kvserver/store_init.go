@@ -239,7 +239,7 @@ func WriteInitialClusterData(
 			// Initialize the checksums.
 			kv.Value.InitChecksum(kv.Key)
 			if err := storage.MVCCPut(
-				ctx, batch, nil /* ms */, kv.Key, now, kv.Value, nil, /* txn */
+				ctx, batch, nil /* ms */, kv.Key, now, kv.Value, nil /* txn */, true, /* durable */
 			); err != nil {
 				return err
 			}

@@ -47,6 +47,7 @@ func Put(
 	args := cArgs.Args.(*roachpb.PutRequest)
 	h := cArgs.Header
 	ms := cArgs.Stats
+	durable := cArgs.Durable
 
 	var ts hlc.Timestamp
 	if !args.Inline {
@@ -56,7 +57,7 @@ func Put(
 	if args.Blind {
 		err = storage.MVCCBlindPut(ctx, readWriter, ms, args.Key, ts, args.Value, h.Txn)
 	} else {
-		err = storage.MVCCPut(ctx, readWriter, ms, args.Key, ts, args.Value, h.Txn)
+		err = storage.MVCCPut(ctx, readWriter, ms, args.Key, ts, args.Value, h.Txn, durable)
 	}
 	// NB: even if MVCC returns an error, it may still have written an intent
 	// into the batch. This allows callers to consume errors like WriteTooOld

@@ -309,6 +309,7 @@ func (r *Replica) evalAndPropose(
 		pr := proposalResult{
 			Reply:              &reply,
 			EncounteredIntents: proposal.Local.DetachEncounteredIntents(),
+			EarlyReturn:        true,
 		}
 		//proposal.signalProposalResult(pr)
 		log.VEvent(proposal.ctx, 2, "Finish application in replica_raft")

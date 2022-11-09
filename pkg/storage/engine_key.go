@@ -257,6 +257,7 @@ type LockTableKey struct {
 	// Slice is of length uuid.Size. We use a slice instead of a byte array, to
 	// avoid copying a slice when decoding.
 	TxnUUID []byte
+	Durable bool
 }
 
 // ToEngineKey converts a lock table key to an EngineKey. buf is used as

@@ -120,4 +120,5 @@ type CommandArgs struct {
 	// *Stats should be mutated to reflect any writes made by the command.
 	Stats       *enginepb.MVCCStats
 	Uncertainty uncertainty.Interval
+	Durable     bool
 }
