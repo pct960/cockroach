@@ -84,6 +84,9 @@ message MVCCMetadata {
   // per transaction. In that case, when this is true, one can optimize
   // removal of the MVCCMetadata by doing a SingleDelete instead of Delete.
   optional bool txn_did_not_update_meta = 9;
+
+  // Flag to indicate if the write intent is durable
+  optional bool durable = 10 [(gogoproto.nullable) = false];
 }
 
 // A mirror of MVCCMetadata intended for serializing non-MVCC data that is

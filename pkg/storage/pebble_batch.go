@@ -438,10 +438,10 @@ func (p *pebbleBatch) PutUnversioned(key roachpb.Key, value []byte) error {
 
 // PutIntent implements the Batch interface.
 func (p *pebbleBatch) PutIntent(
-	ctx context.Context, key roachpb.Key, value []byte, txnUUID uuid.UUID, durable bool,
+	ctx context.Context, key roachpb.Key, value []byte, txnUUID uuid.UUID,
 ) error {
 	var err error
-	p.scratch, err = p.wrappedIntentWriter.PutIntent(ctx, key, value, txnUUID, p.scratch, durable)
+	p.scratch, err = p.wrappedIntentWriter.PutIntent(ctx, key, value, txnUUID, p.scratch)
 	return err
 }
 

@@ -627,12 +627,12 @@ func (s spanSetWriter) PutUnversioned(key roachpb.Key, value []byte) error {
 }
 
 func (s spanSetWriter) PutIntent(
-	ctx context.Context, key roachpb.Key, value []byte, txnUUID uuid.UUID, durable bool,
+	ctx context.Context, key roachpb.Key, value []byte, txnUUID uuid.UUID,
 ) error {
 	if err := s.checkAllowed(key); err != nil {
 		return err
 	}
-	return s.w.PutIntent(ctx, key, value, txnUUID, true /* durable */)
+	return s.w.PutIntent(ctx, key, value, txnUUID)
 }
 
 func (s spanSetWriter) PutEngineKey(key storage.EngineKey, value []byte) error {

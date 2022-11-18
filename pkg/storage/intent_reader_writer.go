@@ -57,14 +57,13 @@ func (idw intentDemuxWriter) ClearIntent(
 // scratch-space to avoid allocations -- its contents will be overwritten and
 // not appended to, and a possibly different buf returned.
 func (idw intentDemuxWriter) PutIntent(
-	ctx context.Context, key roachpb.Key, value []byte, txnUUID uuid.UUID, buf []byte, durable bool,
+	ctx context.Context, key roachpb.Key, value []byte, txnUUID uuid.UUID, buf []byte,
 ) (_ []byte, _ error) {
 	var engineKey EngineKey
 	engineKey, buf = LockTableKey{
 		Key:      key,
 		Strength: lock.Exclusive,
 		TxnUUID:  txnUUID[:],
-		Durable:  durable,
 	}.ToEngineKey(buf)
 	return buf, idw.w.PutEngineKey(engineKey, value)
 }

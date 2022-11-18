@@ -780,6 +780,10 @@ func mvccGet(
 		return optionalValue{}, nil, err
 	}
 	if !opts.Inconsistent && len(intents) > 0 {
+
+		for _, intent := range intents {
+			log.Eventf(ctx, "Found write intent (%s)", intent.String())
+		}
 		return optionalValue{}, nil, &roachpb.WriteIntentError{Intents: intents}
 	}
 
@@ -941,7 +945,7 @@ func (b *putBuffer) putInlineMeta(
 var trueValue = true
 
 func (b *putBuffer) putIntentMeta(
-	ctx context.Context, writer Writer, key MVCCKey, meta *enginepb.MVCCMetadata, alreadyExists bool, durable bool,
+	ctx context.Context, writer Writer, key MVCCKey, meta *enginepb.MVCCMetadata, alreadyExists bool,
 ) (keyBytes, valBytes int64, err error) {
 	if meta.Txn != nil && meta.Timestamp.ToTimestamp() != meta.Txn.WriteTimestamp {
 		// The timestamps are supposed to be in sync. If they weren't, it wouldn't
@@ -959,7 +963,7 @@ func (b *putBuffer) putIntentMeta(
 	if err != nil {
 		return 0, 0, err
 	}
-	if err = writer.PutIntent(ctx, key.Key, bytes, meta.Txn.ID, durable); err != nil {
+	if err = writer.PutIntent(ctx, key.Key, bytes, meta.Txn.ID); err != nil {
 		return 0, 0, err
 	}
 	return int64(key.EncodedSize()), int64(len(bytes)), nil
@@ -1587,6 +1591,9 @@ func mvccPutInternal(
 	newMeta.KeyBytes = MVCCVersionTimestampSize
 	newMeta.ValBytes = int64(len(value))
 	newMeta.Deleted = value == nil
+	newMeta.Durable = durable
+
+	log.Eventf(ctx, "Evaluating write intent with value = (%s) and durable flag set to = (%t)", value, durable)
 
 	var metaKeySize, metaValSize int64
 	if newMeta.Txn != nil {
@@ -1598,7 +1605,7 @@ func mvccPutInternal(
 		alreadyExists := ok && buf.meta.Txn != nil
 		// Write the intent metadata key.
 		metaKeySize, metaValSize, err = buf.putIntentMeta(
-			ctx, writer, metaKey, newMeta, alreadyExists, durable)
+			ctx, writer, metaKey, newMeta, alreadyExists)
 		if err != nil {
 			return err
 		}
@@ -2304,6 +2311,10 @@ func mvccScanToBytes(
 	}
 
 	if !opts.Inconsistent && len(res.Intents) > 0 {
+
+		for _, intent := range res.Intents {
+			log.Eventf(ctx, "Found write intent (%s)", intent.String())
+		}
 		return MVCCScanResult{}, &roachpb.WriteIntentError{Intents: res.Intents}
 	}
 	return res, nil
@@ -3053,7 +3064,7 @@ func mvccResolveWriteIntent(
 			// to do anything to update the intent but to move the timestamp forward,
 			// even if it can.
 			metaKeySize, metaValSize, err = buf.putIntentMeta(
-				ctx, rw, metaKey, &buf.newMeta, true /* alreadyExists */, true /* durable */)
+				ctx, rw, metaKey, &buf.newMeta, true /* alreadyExists */)
 		} else {
 			metaKeySize = int64(metaKey.EncodedSize())
 			err = rw.ClearIntent(metaKey.Key, canSingleDelHelper.onCommitIntent(), meta.Txn.ID)
